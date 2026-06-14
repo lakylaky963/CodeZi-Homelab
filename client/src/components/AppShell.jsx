@@ -13,6 +13,7 @@ const navItems = [
 const gameItems = [
   { to: "/game", label: "Runner", icon: "game" },
   { to: "/poker", label: "Video Poker", icon: "spark" },
+  { to: "/poker-multi", label: "Hold'em Live", icon: "users" },
   { to: "/spin", label: "Wheel Spin", icon: "refresh" },
   { to: "/flip", label: "Heads or Tails", icon: "game" },
 ];

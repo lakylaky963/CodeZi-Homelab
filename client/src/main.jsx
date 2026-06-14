@@ -10,6 +10,7 @@ import Users from './pages/Users.jsx'
 import Resume from './pages/Resume.jsx'
 import TechShowcase from './pages/TechShowcase.jsx'
 import Poker from './pages/Poker.jsx'
+import PokerGame from './pages/PokerGame.jsx'
 import SpinWheel from './pages/SpinWheel.jsx'
 import CoinFlip from './pages/CoinFlip.jsx'
 import './index.css'
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="/resume" element={<Resume />} />
             <Route path="/tech" element={<TechShowcase />} />
             <Route path="/poker" element={<Poker />} />
+            <Route path="/poker-multi" element={<PokerGame />} />
             <Route path="/spin" element={<SpinWheel />} />
             <Route path="/flip" element={<CoinFlip />} />
             <Route path="/axios" element={<Navigate to="/users" replace />} />
