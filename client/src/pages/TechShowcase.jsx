@@ -47,7 +47,7 @@ export default function TechShowcase() {
             Operational Control Center
           </span>
           <h1 className="mt-5 max-w-4xl text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl">
-            System view for the MERN app.
+            System view for CodeZi.
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-400 sm:text-base">
             This page documents how the frontend, API, and small MongoDB user schema cooperate without changing the existing API client or database contract.

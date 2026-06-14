@@ -1,10 +1,10 @@
-# MERN Boilerplate
+# CodeZi
 
 ## Introduction
 
-This is a full-stack boilerplate using MongoDB, Express.js, React.js, Node.js, and JavaScript
+CodeZi is a full-stack application using MongoDB, Express.js, React.js, Node.js, and JavaScript.
 
-The `main` branch contains the starter code for a basic React project (initialized with `vite`) using [MUI](https://mui.com) and [TailwindCSS](https://tailwindcss.com/) for styling, and an Express server connected to MongoDB.
+The `main` branch contains a React project initialized with [Vite](https://vite.dev/) using [MUI](https://mui.com) and [TailwindCSS](https://tailwindcss.com/) for styling, plus an Express server connected to MongoDB.
 
 
 <!-- Description about the app -->

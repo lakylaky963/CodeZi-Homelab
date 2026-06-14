@@ -1,25 +1,26 @@
 {
-  "name": "HTF Boilerplate",
-  "short_name": "HTF",
+  "name": "CodeZi",
+  "short_name": "CodeZi",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/codezi-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "/codezi-logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "/codezi-logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ],
   "start_url": ".",
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#020617",
+  "background_color": "#020617",
   "display": "standalone"
 }

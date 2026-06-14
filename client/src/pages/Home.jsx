@@ -23,6 +23,27 @@ const destinations = [
     icon: "layers",
     accent: "text-indigo-700 dark:text-indigo-200",
   },
+  {
+    to: "/poker",
+    title: "Video Poker",
+    text: "Test your luck with a classic draw poker game. High scores are saved to the user database.",
+    icon: "spark",
+    accent: "text-rose-700 dark:text-rose-200",
+  },
+  {
+    to: "/spin",
+    title: "Wheel Spin",
+    text: "Spin the wheel to win points. A quick way to test the random number generator and API.",
+    icon: "refresh",
+    accent: "text-amber-700 dark:text-amber-200",
+  },
+  {
+    to: "/flip",
+    title: "Heads or Tails",
+    text: "A simple 50/50 bet. Win streaks are tracked and saved as competitive records.",
+    icon: "game",
+    accent: "text-blue-700 dark:text-blue-200",
+  },
 ];
 
 const stats = [

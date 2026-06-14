@@ -135,6 +135,95 @@ a {
   color: var(--blue-dark);
 }
 
+/* Dropdown logic for header */
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Keep the trigger link highlighted while the dropdown is open */
+.nav-dropdown:hover .nav-link {
+  background: #edf3ff;
+  color: var(--blue-dark);
+}
+
+.nav-dropdown-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  min-width: 220px;
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  transition: all 200ms ease;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 
+  This pseudo-element bridges the physical gap between the button and the menu.
+  Without this, the menu often flickers closed before the mouse can reach it.
+*/
+.nav-dropdown-content::before {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  right: 0;
+  height: 20px;
+}
+
+.nav-dropdown:hover .nav-dropdown-content {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(4px);
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #475467;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.nav-dropdown-item:hover {
+  background: #edf3ff;
+  color: var(--blue-dark);
+}
+
+/* Dark mode support for the dropdown menu */
+.dark .nav-dropdown-content {
+  background: #101828;
+  border-color: #1e293b;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.dark .nav-dropdown-item {
+  color: #cecfd5;
+}
+
+.dark .nav-dropdown-item:hover {
+  background: #1e293b;
+  color: #60a5fa;
+}
+
+.dark .nav-dropdown:hover .nav-link {
+  background: #1e293b;
+  color: #60a5fa;
+}
+
 .nav-link:active,
 .btn:active,
 .icon-button:active,
