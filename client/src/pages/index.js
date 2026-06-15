@@ -34,3 +34,9 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log(`🚀 Real-time Poker Gateway active on port ${PORT}`);
 });
+// This file should contain your client-side React application's entry point.
+// For example:
+// import React from 'react';
+// import ReactDOM from 'react-dom/client';
+// import App from '../App'; // Assuming App.jsx is in client/src/App.jsx
+// ReactDOM.createRoot(document.getElementById('root')).render(<App />);

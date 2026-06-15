@@ -1,10 +1,8 @@
 /**
  * Poker Room Socket Handler - Game State Machine
  */
-
 const rooms = {};
 
-// Helper: Generate and shuffle a 52-card deck
 const createDeck = () => {
   const suits = ['H', 'D', 'C', 'S'];
   const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -12,7 +10,6 @@ const createDeck = () => {
   for (const s of suits) {
     for (const v of values) deck.push(`${v}${s}`);
   }
-  // Fisher-Yates Shuffle
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -25,7 +22,7 @@ const getSanitizedState = (roomName, viewerSocketId) => {
   if (!room) return null;
   return {
     ...room,
-    deck: undefined, // Never leak the remaining deck
+    deck: undefined,
     players: room.players.map((p) => ({
       ...p,
       cards: (p.socketId === viewerSocketId || room.gameStage === 'showdown') 
@@ -47,15 +44,35 @@ const broadcastGameState = (io, roomName) => {
 const advanceStage = (room) => {
   const stages = ['preflop', 'flop', 'turn', 'river', 'showdown'];
   const currentIndex = stages.indexOf(room.gameStage);
-  room.gameStage = stages[currentIndex + 1];
-  room.currentTurn = 0; // Reset turn to first player for next stage
-  room.playersActedThisRound = 0;
+  
+  if (room.gameStage === 'river') {
+    room.gameStage = 'showdown';
+    determineWinner(room);
+  } else {
+    room.gameStage = stages[currentIndex + 1];
+    room.playersActedThisRound = 0;
+    room.currentTurn = room.players.findIndex(p => !p.folded); // Simple turn reset
 
-  if (room.gameStage === 'flop') {
-    room.communityCards.push(...[room.deck.pop(), room.deck.pop(), room.deck.pop()]);
-  } else if (room.gameStage === 'turn' || room.gameStage === 'river') {
-    room.communityCards.push(room.deck.pop());
+    if (room.gameStage === 'flop') {
+      room.communityCards.push(room.deck.pop(), room.deck.pop(), room.deck.pop());
+    } else if (room.gameStage === 'turn' || room.gameStage === 'river') {
+      room.communityCards.push(room.deck.pop());
+    }
   }
+};
+
+const determineWinner = (room) => {
+  const activePlayers = room.players.filter(p => !p.folded);
+  if (activePlayers.length === 0) return;
+  
+  // Simplified logic: pot split among remaining active players for this MVP handler
+  // In production, integrate 'pokersolver' or similar library here.
+  const share = Math.floor(room.pot / activePlayers.length);
+  activePlayers.forEach(p => {
+    p.chips += share;
+    p.lastAction = `Winner! (+${share})`;
+  });
+  room.pot = 0;
 };
 
 export default (io, socket) => {
@@ -81,7 +98,8 @@ export default (io, socket) => {
         chips: 1000,
         cards: [],
         folded: false,
-        lastAction: ''
+        lastAction: '',
+        lastBet: 0
       });
     }
     broadcastGameState(io, room);
@@ -103,15 +121,15 @@ export default (io, socket) => {
       p.cards = [roomState.deck.pop(), roomState.deck.pop()];
       p.folded = false;
       p.lastAction = '';
+      p.lastBet = 0;
     });
 
-    console.log(`[Poker] Game started in room: ${room}`);
     broadcastGameState(io, room);
   });
 
   socket.on('playerAction', ({ room, action, amount = 0 }) => {
     const roomState = rooms[room];
-    if (!roomState || roomState.gameStage === 'showdown') return;
+    if (!roomState || roomState.gameStage === 'showdown' || roomState.gameStage === 'waiting') return;
 
     const playerIndex = roomState.players.findIndex(p => p.socketId === socket.id);
     if (playerIndex !== roomState.currentTurn) {
@@ -120,35 +138,48 @@ export default (io, socket) => {
 
     const player = roomState.players[playerIndex];
 
-    // 1. Process Actions
+    // 1. Process Logic
     if (action === 'fold') {
       player.folded = true;
       player.lastAction = 'Fold';
     } else if (action === 'call') {
-      const callAmount = roomState.currentBet;
+      const callAmount = roomState.currentBet - player.lastBet;
+      if (player.chips < callAmount) return socket.emit('error', 'Insufficient chips');
       player.chips -= callAmount;
       roomState.pot += callAmount;
+      player.lastBet = roomState.currentBet;
       player.lastAction = 'Call';
     } else if (action === 'raise') {
       const raiseTotal = amount; 
-      const addition = raiseTotal - (player.lastBet || 0);
+      if (raiseTotal <= roomState.currentBet) return socket.emit('error', 'Raise must be higher than current bet');
+      const addition = raiseTotal - player.lastBet;
+      if (player.chips < addition) return socket.emit('error', 'Insufficient chips');
       player.chips -= addition;
       roomState.pot += addition;
       roomState.currentBet = raiseTotal;
+      player.lastBet = raiseTotal;
       player.lastAction = `Raise to ${amount}`;
+      // When someone raises, we reset playersActedThisRound because others must now match it
+      roomState.playersActedThisRound = 0; 
     }
 
-    // 2. Advance Logic
+    // 2. Game Flow Logic
     roomState.playersActedThisRound++;
     const activePlayers = roomState.players.filter(p => !p.folded);
     
+    // Win by default if everyone else folded
+    if (activePlayers.length === 1) {
+      roomState.gameStage = 'showdown';
+      determineWinner(roomState);
+      broadcastGameState(io, room);
+      return;
+    }
+
     // Check if round is over
     if (roomState.playersActedThisRound >= activePlayers.length) {
-      if (roomState.gameStage === 'river') {
-        roomState.gameStage = 'showdown';
-      } else {
-        advanceStage(roomState);
-      }
+      advanceStage(roomState);
+      roomState.players.forEach(p => p.lastBet = 0); // Reset round betting
+      roomState.currentBet = 0;
     } else {
       // Find next active player
       let nextTurn = (roomState.currentTurn + 1) % roomState.players.length;
@@ -168,7 +199,7 @@ export default (io, socket) => {
         if (rooms[room].players.length === 0) {
           delete rooms[room];
         } else {
-          // If it was their turn, advance it
+          // Ensure turn doesn't point to an out-of-bounds index after removal
           if (rooms[room].currentTurn >= rooms[room].players.length) {
             rooms[room].currentTurn = 0;
           }

@@ -5,109 +5,94 @@ import { Server } from 'socket.io'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
-import mongoConnect from './config/db.js' // Adjust paths if necessary to match your workspace
+import mongoConnect from './config/db.js'
 import rootRouter from './routes/index.js'
-import pokerHandler from './sockets/pokerHandler.js'
+
+// Clean extensionless import to the correct subfolder
+import pokerHandler from './sockets/pokerHandler'
 
 const app = express()
 const port = process.env.PORT || 8080
 
-// Setup dynamic CORS array
-const allowedOrigins = [process.env.CLIENT_URL, 'http://localhost:5173'].filter(Boolean)
-const corsOptions = {
-  origin(origin, callback) {
-    if (!origin) return callback(null, true)
-    if (allowedOrigins.includes(origin)) return callback(null, true)
-    callback(new Error('Not allowed by CORS'))
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
+// Dynamic CORS configuration
+const envOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+
+const allowedOrigins = Array.from(
+  new Set([
+    ...envOrigins,
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+  ])
+)
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true
+  if (allowedOrigins.includes(origin)) return true
+  return /^http:\/\/localhost:517\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:517\d+$/.test(origin)
 }
 
-// Middlewares
-app.use(cors(corsOptions))
-app.options('*', cors(corsOptions))
+app.use(cors({ origin: isAllowedOrigin, credentials: true }))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(cookieParser())
 
-// Main API Route
 app.use('/api', rootRouter)
 
-// Create Native HTTP Server and attach Socket.io
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true
-  },
+  cors: { origin: isAllowedOrigin, methods: ["GET", "POST"], credentials: true },
   allowEIO3: true
 })
 
-// Real-Time Socket Event Pipeline
 io.on('connection', (socket) => {
   console.log(`🚀 Real-time poker player connected: ${socket.id}`)
-  
-  // Initialize Poker Game Logic
-  pokerHandler(io, socket);
-
+  pokerHandler(io, socket)
   socket.on('disconnect', () => {
     console.log(`❌ Player left: ${socket.id}`)
   })
 })
 
-// Error Handler Framework preserving CORS headers
-app.use((err, req, res, next) => {
-  if (!res.headersSent) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] || '*')
-    res.setHeader('Access-Control-Allow-Credentials', 'true')
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
-  }
-  if (err.message === 'Not allowed by CORS') return res.status(403).json({ error: err.message })
-  console.error(err)
-  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' })
-})
-
-// Defensive, clean single-boot system
-// const startServer = async () => {
-//   try {
-//     console.log("🔄 Initializing MongoDB Connection...")
-//     await mongoConnect()
-//     console.log("✅ MongoDB Connected Safely!")
-
-//     httpServer.listen(port, () => {
-//       console.log(`🚀 ========================================== 🚀`)
-//       console.log(` CodeZi Real-Time Server active on port: ${port}`)
-//       console.log(`🚀 ========================================== 🚀`)
-//     })
-//   } catch (error) {
-//     console.error("❌ CRITICAL SERVER ENGINE BOOT FAULT:")
-//     console.error(error)
-//     process.exit(1)
-//   }
-// };
-
-// startServer()
-
-// Temporarily isolated boot layer to diagnose network binding
+// ====================================================
+// 🔥 ANTI-ZOMBIE AUTOMATIC PORT CLEANUP MECHANICS
+// ====================================================
 const startServer = async () => {
-  // 1. Force the server to start listening on the network IMMEDIATELY
-  httpServer.listen(port, () => {
+  const serverInstance = httpServer.listen(port, () => {
     console.log(`🚀 ========================================== 🚀`)
-    console.log(`🟢 CodeZi Real-Time Server FORCED ACTIVE on port: ${port}`)
+    console.log(`🟢 CodeZi Real-Time Server ACTIVE on port: ${port}`)
     console.log(`🚀 ========================================== 🚀`)
   })
 
-  // 2. Attempt database connection in the background without blocking the ports
+  // Catch if port 8080 is already locked by a zombie process and kill gracefully
+  serverInstance.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`⚠️ Port ${port} is occupied! Force-exiting process to clear binding...`)
+      process.exit(1)
+    }
+  })
+
   try {
     console.log("🔄 Initializing MongoDB Connection in background...")
     await mongoConnect()
     console.log("✅ MongoDB Connected Safely!")
   } catch (error) {
-    console.error("❌ BACKGROUND DATABASE FAULT (Server is still running though):")
-    console.error(error)
+    console.log("⚠️ Continuing without MongoDB connection locally...")
   }
 }
+
+// Cleanly free port 8080 when stopping server with Ctrl+C
+const killSignals = ['SIGINT', 'SIGTERM', 'SIGQUIT']
+killSignals.forEach(signal => {
+  process.on(signal, () => {
+    console.log(`\n🛑 Shuts down server gracefully via ${signal}... freeing ports.`)
+    httpServer.close(() => {
+      process.exit(0)
+    })
+  })
+})
 
 startServer()
