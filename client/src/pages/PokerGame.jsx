@@ -13,7 +13,7 @@ const socket = io(SERVER_URL, {
   reconnectionDelayMax: 5000,
   reconnectionAttempts: 10,
   withCredentials: true,
-  timeout: 10000,
+  timeout: 60000,
 });
 
 const SEAT_POSITIONS = [
