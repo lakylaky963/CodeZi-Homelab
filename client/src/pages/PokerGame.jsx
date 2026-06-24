@@ -7,7 +7,7 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
 console.log("🎮 Poker game connecting to:", SERVER_URL);
 
 const socket = io(SERVER_URL, {
-  transports: ["websocket", "polling"],
+  transports: ["websocket"], // 🟢 Changed: Bypasses polling completely to fix Render's connection timeouts
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
