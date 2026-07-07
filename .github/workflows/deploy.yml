@@ -1,0 +1,27 @@
+name: Deploy Web App to Homelab
+
+on:
+  push:
+    branches:
+      - main # Change this if your main branch is called master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code from GitHub
+        run: |
+          cd /var/www/html
+          git pull origin main
+
+      - name: Deploy Backend Updates
+        run: |
+          cd /var/www/html/backend
+          npm install
+          pm2 restart all || pm2 start server.js --name "backend-api"
+
+      - name: Deploy Frontend Updates
+        run: |
+          cd /var/www/html/frontend
+          npm install
+          npm run build
