@@ -10,7 +10,7 @@ import rootRouter from './routes/index.js'
 import requestLogger from './middleware/requestLogger.js'
 
 // Clean extensionless import to the correct subfolder
-import pokerHandler from './sockets/pokerHandler'
+import pokerHandler from './sockets/pokerHandler.js';
 import startSessionSweeper from './services/sessionSweeper.js'
 
 const app = express()
