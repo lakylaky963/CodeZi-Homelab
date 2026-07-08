@@ -1,13 +1,13 @@
-import GameRoom from 'models/gameRoom.model'
-import { STARTING_CHIPS } from '../services/poker/cardUtils'
+import GameRoom from '../models/gameRoom.model.js'
+import { STARTING_CHIPS } from '../services/poker/cardUtils.js'
 import {
   dealNewHand,
   applyPlayerAction,
   processAfterAction,
   resetHandAfterShowdown,
   touchActivity,
-} from '../services/poker/gameLogic'
-import { sweepRoom } from '../services/sessionSweeper'
+} from '../services/poker/gameLogic.js'
+import { sweepRoom } from '../services/sessionSweeper.js'
 
 const getSanitizedState = (roomDoc, viewerSocketId) => {
   const room = roomDoc.toObject ? roomDoc.toObject() : JSON.parse(JSON.stringify(roomDoc))

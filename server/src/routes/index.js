@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import userRouter from 'routes/user.route'
+import userRouter from './user.route.js'
 
 const rootRouter = Router()
 

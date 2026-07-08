@@ -1,5 +1,5 @@
 import { evaluateStrings, rank, rankDescription, getCardCodes } from '@pokertools/evaluator'
-import { toEvaluatorCard } from './cardUtils'
+import { toEvaluatorCard } from './cardUtils.js'
 
 export const evaluateHand = (holeCards, communityCards) => {
   const cards = [...holeCards, ...communityCards].map(toEvaluatorCard)

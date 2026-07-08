@@ -1,4 +1,4 @@
-import GameRoom from 'models/gameRoom.model'
+import GameRoom from '../models/gameRoom.model.js'
 
 const DEFAULT_IDLE_MS = 30 * 60 * 1000
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000

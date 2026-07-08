@@ -1,5 +1,5 @@
-import { createDeck, STARTING_CHIPS } from './cardUtils'
-import { evaluateHand } from './handEvaluator'
+import { createDeck, STARTING_CHIPS } from './cardUtils.js'
+import { evaluateHand } from './handEvaluator.js'
 
 export const touchActivity = (room) => {
   room.lastActivityAt = new Date()

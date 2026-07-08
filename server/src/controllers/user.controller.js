@@ -1,4 +1,4 @@
-import User from 'models/user.model'
+import User from '../models/user.model.js'
 import to from 'await-to-js'
 
 /**
