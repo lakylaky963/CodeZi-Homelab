@@ -26,6 +26,9 @@ jobs:
           npm install
           pm2 restart backend-api || pm2 start src/server.js --name "backend-api"
 
+      - name: Clean previous dist folder
+        run: sudo rm -rf /var/www/html/client/dist
+
       - name: Deploy Frontend Updates
         run: |
           cd /var/www/html/client
