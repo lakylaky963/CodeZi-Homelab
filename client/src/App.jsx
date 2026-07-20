@@ -13,7 +13,8 @@ import Axios from "./pages/Axios";
 
 export default function App() {
   return (
-    <Router>
+    // Add the basename prop here to match your Nginx/Tailscale subpath
+    <Router basename="/codezi">
       <AppShell>
         <Routes>
           {/* Primary Views */}
