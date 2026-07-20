@@ -4,10 +4,12 @@ import { io } from "socket.io-client";
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
 
 // Log connection attempt for debugging
-console.log("🎮 Poker game connecting to:", SERVER_URL);
+console.log("🎮 Poker game connecting to:", import.meta.env.DEV ? SERVER_URL : "Relative Production Path");
 
-const socket = io(SERVER_URL, {
-  transports: ["websocket"], // 🟢 Changed: Bypasses polling completely to fix Render's connection timeouts
+// 🟢 FIX: Uses local URL in development, uses fully relative pathing in production
+const socket = io(import.meta.env.DEV ? SERVER_URL : "", {
+  path: '/codezi/socket.io', // ↵ CRITICAL: Tells your central proxy this belongs to Codezi
+  transports: ["websocket"], 
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
