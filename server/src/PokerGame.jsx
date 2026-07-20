@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
 // Initialize socket outside component to prevent multiple connections on re-render
-const socket = io('http://localhost:8080');
+const socket = io({
+  path: '/codezi/socket.io'
+});
 
 const PokerGame = () => {
   const [gameState, setGameState] = useState(null);
