@@ -1,5 +1,8 @@
 import mongoose from 'mongoose'
 
+mongoose.set('strictQuery', false)
+mongoose.set('bufferCommands', false)
+
 const forceLocal = process.env.FORCE_LOCAL_MONGO === 'true'
 const localMongoURI = process.env.LOCAL_MONGO_URI || 'mongodb://127.0.0.1:27017/codezi'
 
@@ -8,12 +11,18 @@ const connectWithURI = async (uri, label) => {
     throw new Error(`No URI provided for ${label}`)
   }
 
-  await mongoose.connect(uri)
+  const connectOptions = {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    family: 4,
+  }
+
+  await mongoose.connect(uri, connectOptions)
   console.log(`✅ Connected to MongoDB via ${label}`)
 }
 
 const connectMongo = async () => {
-  const onlineMongoURI = process.env.MONGO_URI || process.env.DATABASE_URL
+  const onlineMongoURI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL
 
   if (forceLocal) {
     console.log('⚠️ FORCE_LOCAL_MONGO is enabled. Connecting to local MongoDB only.')

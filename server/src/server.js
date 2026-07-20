@@ -3,7 +3,6 @@ import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
-import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import mongoConnect from './config/db.js'
 import rootRouter from './routes/index.js'
@@ -41,8 +40,8 @@ const isAllowedOrigin = (origin) => {
 }
 
 app.use(cors({ origin: (origin, callback) => callback(null, isAllowedOrigin(origin)), credentials: true }))
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: false }))
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
 
 // Simple request logging to help debug connection resets

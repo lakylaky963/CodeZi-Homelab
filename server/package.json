@@ -2,6 +2,7 @@
   "name": "codezi-server",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "./src/server.js",
   "scripts": {
   "test": "echo \"Error: no test specified\" && exit 1",
@@ -14,9 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@pokertools/evaluator": "^1.0.1",
-    "await-to-js": "^3.0.0",
     "bcrypt": "^5.0.1",
-    "body-parser": "^1.20.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
