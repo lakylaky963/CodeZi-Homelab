@@ -19,22 +19,23 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <LanguageProvider>
       <ThemeProvider>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/game" element={<Game />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/resume" element={<Resume />} />
-            <Route path="/tech" element={<TechShowcase />} />
-            <Route path="/poker" element={<Poker />} />
-            <Route path="/poker-multi" element={<PokerGame />} />
-            <Route path="/spin" element={<SpinWheel />} />
-            <Route path="/flip" element={<CoinFlip />} />
-            <Route path="/axios" element={<Navigate to="/users" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+        {/* Inject basename right here so this router knows it lives under /codezi */}
+        <BrowserRouter basename="/codezi" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/game" element={<Game />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/resume" element={<Resume />} />
+              <Route path="/tech" element={<TechShowcase />} />
+              <Route path="/poker" element={<Poker />} />
+              <Route path="/poker-multi" element={<PokerGame />} />
+              <Route path="/spin" element={<SpinWheel />} />
+              <Route path="/flip" element={<CoinFlip />} />
+              <Route path="/axios" element={<Navigate to="/users" replace />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
       </ThemeProvider>
     </LanguageProvider>
   </StrictMode>,
