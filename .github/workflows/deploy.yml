@@ -18,7 +18,7 @@ jobs:
             echo "/var/www/html is not writable by the runner user.\nPlease ensure the self-hosted runner user owns /var/www/html or configure passwordless sudo on the host."
             exit 1
           fi
-          rsync -avz --delete --exclude='.git/' --exclude='node_modules/' --exclude='client/node_modules/' ./ /var/www/html/
+          rsync -avz --delete --exclude='.git/' --exclude='node_modules/' --exclude='client/node_modules/' --exclude='client/dist/' ./ /var/www/html/
 
       - name: Deploy Backend Updates
         run: |
