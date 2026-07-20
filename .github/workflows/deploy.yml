@@ -14,7 +14,9 @@ jobs:
 
       - name: Copy Files to Web Directory
         run: |
-          rsync -avz --delete --exclude='.git/' ./ /var/www/html/
+          rsync -avz --delete --exclude='.git/' --exclude='node_modules/' --exclude='client/node_modules/' ./ /var/www/html/
+        # run: |
+        #   rsync -avz --delete --exclude='.git/' ./ /var/www/html/
 
       - name: Deploy Backend Updates
         run: |
