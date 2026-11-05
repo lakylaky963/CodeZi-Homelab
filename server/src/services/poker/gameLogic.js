@@ -5,17 +5,19 @@ export const touchActivity = (room) => {
   room.lastActivityAt = new Date()
 }
 
-export const getActivePlayers = (room) => room.players.filter((p) => !p.folded)
+// Still in the hand (not folded, not left).
+export const getActivePlayers = (room) => room.players.filter((p) => !p.folded && !p.left)
 
+// Still able to bet (in the hand, not all-in, has chips).
 export const getPlayersWhoCanAct = (room) =>
-  room.players.filter((p) => !p.folded && !p.allIn && p.chips > 0)
+  room.players.filter((p) => !p.folded && !p.left && !p.allIn && p.chips > 0)
 
 export const findNextActivePlayer = (room, fromIndex) => {
   const n = room.players.length
   for (let i = 1; i <= n; i++) {
-    const idx = (fromIndex + i) % n
+    const idx = (((fromIndex + i) % n) + n) % n
     const p = room.players[idx]
-    if (!p.folded && !p.allIn) return idx
+    if (!p.folded && !p.left && !p.allIn && p.chips > 0) return idx
   }
   return -1
 }
@@ -26,14 +28,21 @@ export const isBettingRoundComplete = (room) => {
   return canAct.every((p) => p.hasActedThisRound && p.lastBet === room.currentBet)
 }
 
+// Moves chips from a player into the pot and keeps per-street and per-hand totals in sync.
+const commit = (room, player, amount) => {
+  const paid = Math.max(0, Math.min(player.chips, amount))
+  player.chips -= paid
+  player.lastBet += paid
+  player.totalBet = (player.totalBet || 0) + paid
+  room.pot += paid
+  if (player.chips === 0) player.allIn = true
+  return paid
+}
+
 const postBlind = (room, playerIndex, amount, label) => {
   const player = room.players[playerIndex]
-  const paid = Math.min(player.chips, amount)
-  player.chips -= paid
-  player.lastBet = paid
-  room.pot += paid
+  const paid = commit(room, player, amount)
   player.lastAction = label
-  if (player.chips === 0) player.allIn = true
   return paid
 }
 
@@ -50,8 +59,10 @@ export const dealNewHand = (room) => {
   room.players.forEach((p) => {
     p.cards = []
     p.folded = false
+    p.left = false
     p.allIn = false
     p.lastBet = 0
+    p.totalBet = 0
     p.lastAction = ''
     p.hasActedThisRound = false
     if (p.chips <= 0) p.chips = STARTING_CHIPS
@@ -67,7 +78,7 @@ export const dealNewHand = (room) => {
 
   postBlind(room, sbIndex, room.smallBlind, `SB $${room.smallBlind}`)
   const bbPaid = postBlind(room, bbIndex, room.bigBlind, `BB $${room.bigBlind}`)
-  room.currentBet = bbPaid
+  room.currentBet = Math.max(bbPaid, room.players[sbIndex].lastBet)
 
   room.players.forEach((p) => {
     p.hasActedThisRound = false
@@ -77,9 +88,32 @@ export const dealNewHand = (room) => {
   touchActivity(room)
 }
 
+// Splits the pot into a main pot and side pots by how much each player put in,
+// so an all-in player can only win from others what they themselves matched.
+const buildPots = (room) => {
+  const contenders = getActivePlayers(room)
+  const levels = [...new Set(contenders.map((p) => p.totalBet || 0))].filter((v) => v > 0).sort((a, b) => a - b)
+  const pots = []
+  let previous = 0
+  levels.forEach((level) => {
+    const amount = room.players.reduce((sum, p) => sum + Math.max(0, Math.min(p.totalBet || 0, level) - previous), 0)
+    const eligible = contenders.filter((p) => (p.totalBet || 0) >= level)
+    if (amount > 0) pots.push({ amount, eligible })
+    previous = level
+  })
+  // Anything not covered (e.g. legacy hands without totalBet) goes to the last pot.
+  const covered = pots.reduce((sum, pot) => sum + pot.amount, 0)
+  if (room.pot > covered) {
+    if (pots.length) pots[pots.length - 1].amount += room.pot - covered
+    else pots.push({ amount: room.pot, eligible: contenders })
+  }
+  return pots
+}
+
 export const resolveShowdown = (room) => {
   const activePlayers = getActivePlayers(room)
   if (activePlayers.length === 0) {
+    room.pot = 0
     return { winners: [], potAwarded: 0 }
   }
 
@@ -95,36 +129,31 @@ export const resolveShowdown = (room) => {
     }
   }
 
-  const evaluated = activePlayers.map((p) => ({
-    player: p,
-    ...evaluateHand(p.cards, room.communityCards),
-  }))
-
-  const bestScore = Math.min(...evaluated.map((e) => e.score))
-  const winners = evaluated.filter((e) => e.score === bestScore)
+  const scores = new Map(activePlayers.map((p) => [p, evaluateHand(p.cards, room.communityCards)]))
+  const totals = new Map()
   const potAwarded = room.pot
-  const share = Math.floor(potAwarded / winners.length)
-  let remainder = potAwarded % winners.length
-  const winnerResults = []
 
-  winners.forEach((w) => {
-    const award = share + (remainder > 0 ? 1 : 0)
-    if (remainder > 0) remainder -= 1
-    w.player.chips += award
-    w.player.lastAction = `Wins $${award} (${w.description})`
-    winnerResults.push({
-      username: w.player.username,
-      hand: w.description,
-      amount: award,
+  buildPots(room).forEach((pot) => {
+    const best = Math.min(...pot.eligible.map((p) => scores.get(p).score))
+    const potWinners = pot.eligible.filter((p) => scores.get(p).score === best)
+    const share = Math.floor(pot.amount / potWinners.length)
+    let remainder = pot.amount % potWinners.length
+    potWinners.forEach((p) => {
+      const award = share + (remainder > 0 ? 1 : 0)
+      if (remainder > 0) remainder -= 1
+      p.chips += award
+      totals.set(p, (totals.get(p) || 0) + award)
     })
   })
 
-  room.pot = 0
+  const winnerResults = [...totals.entries()].map(([p, amount]) => {
+    const { description } = scores.get(p)
+    p.lastAction = `Wins $${amount} (${description})`
+    return { username: p.username, hand: description, amount }
+  })
 
-  return {
-    winners: winnerResults,
-    potAwarded,
-  }
+  room.pot = 0
+  return { winners: winnerResults, potAwarded }
 }
 
 export const advanceStage = (room) => {
@@ -156,19 +185,30 @@ export const advanceStage = (room) => {
   return null
 }
 
+// After a hand: drop players who left, keep the dealer button on the right seat.
 export const resetHandAfterShowdown = (room) => {
+  const dealer = room.players[room.dealerIndex]
+  const staying = room.players.filter((p) => !p.left)
+  // Find the dealer's new seat before reassigning (Mongoose re-wraps the array items).
+  const dealerStillHere = dealer ? staying.indexOf(dealer) : -1
+  room.players = staying
+  room.dealerIndex = dealerStillHere >= 0 ? dealerStillHere : Math.min(room.dealerIndex, room.players.length) - 1
+  room.players.forEach((p, i) => { p.seatIndex = i })
+
   room.gameStage = 'waiting'
   room.status = 'lobby'
   room.communityCards = []
   room.deck = []
   room.currentBet = 0
   room.playersActedThisRound = 0
+  room.currentTurn = 0
 
   room.players.forEach((p) => {
     p.cards = []
     p.folded = false
     p.allIn = false
     p.lastBet = 0
+    p.totalBet = 0
     p.lastAction = ''
     p.hasActedThisRound = false
   })
@@ -176,7 +216,8 @@ export const resetHandAfterShowdown = (room) => {
   touchActivity(room)
 }
 
-export const applyPlayerAction = (room, playerIndex, action, amount = 20) => {
+// amount = how much to raise BY (on top of the current bet). Sent by the browser, so validated here.
+export const applyPlayerAction = (room, playerIndex, action, amount) => {
   const player = room.players[playerIndex]
 
   if (action === 'fold') {
@@ -193,31 +234,37 @@ export const applyPlayerAction = (room, playerIndex, action, amount = 20) => {
     const callAmount = room.currentBet - player.lastBet
     if (callAmount <= 0) {
       player.lastAction = 'Check'
-      player.hasActedThisRound = true
     } else {
-      if (player.chips < callAmount) throw new Error('Insufficient chips')
-      player.chips -= callAmount
-      room.pot += callAmount
-      player.lastBet = room.currentBet
-      player.lastAction = `Call $${callAmount}`
-      player.hasActedThisRound = true
-      if (player.chips === 0) player.allIn = true
+      const paid = commit(room, player, callAmount) // short stack: calls all-in
+      player.lastAction = player.allIn ? `All-in $${paid}` : `Call $${paid}`
     }
-  } else if (action === 'raise') {
-    const raiseTotal = room.currentBet + amount
-    const addition = raiseTotal - player.lastBet
-    if (addition <= 0) throw new Error('Raise must exceed current bet')
-    if (player.chips < addition) throw new Error('Insufficient chips')
-    player.chips -= addition
-    room.pot += addition
-    room.currentBet = raiseTotal
-    player.lastBet = raiseTotal
-    player.lastAction = `Raise to $${raiseTotal}`
     player.hasActedThisRound = true
-    if (player.chips === 0) player.allIn = true
+  } else if (action === 'raise') {
+    const raiseBy = Math.floor(Number(amount))
+    const minRaise = room.bigBlind || 20
+    if (!Number.isFinite(raiseBy) || raiseBy <= 0) throw new Error('Enter a raise amount')
+    const wanted = room.currentBet + raiseBy
+    const maxTotal = player.lastBet + player.chips
+    if (wanted > maxTotal) {
+      // Not enough for that raise: go all-in instead.
+      if (maxTotal <= room.currentBet) {
+        const paid = commit(room, player, player.chips)
+        player.lastAction = `All-in $${paid}`
+        player.hasActedThisRound = true
+        touchActivity(room)
+        return
+      }
+    } else if (raiseBy < minRaise) {
+      throw new Error(`Minimum raise is $${minRaise}`)
+    }
+    const raiseTotal = Math.min(wanted, maxTotal)
+    commit(room, player, raiseTotal - player.lastBet)
+    room.currentBet = raiseTotal
+    player.lastAction = player.allIn ? `All-in $${raiseTotal}` : `Raise to $${raiseTotal}`
+    player.hasActedThisRound = true
 
     room.players.forEach((p, idx) => {
-      if (idx !== playerIndex && !p.folded && !p.allIn) {
+      if (idx !== playerIndex && !p.folded && !p.left && !p.allIn) {
         p.hasActedThisRound = false
       }
     })
@@ -239,15 +286,15 @@ export const runOutBoard = (room) => {
 export const processAfterAction = (room) => {
   const activePlayers = getActivePlayers(room)
 
-  if (activePlayers.length === 1) {
+  if (activePlayers.length <= 1) {
     room.gameStage = 'showdown'
     room.status = 'showdown'
     return resolveShowdown(room)
   }
 
   if (isBettingRoundComplete(room)) {
-    const canAct = getPlayersWhoCanAct(room)
-    if (canAct.length === 0 && activePlayers.length > 1) {
+    // Nobody (or only one player) can still bet: deal the rest of the board.
+    if (getPlayersWhoCanAct(room).length <= 1) {
       return runOutBoard(room)
     }
 
@@ -263,9 +310,23 @@ export const processAfterAction = (room) => {
   }
 
   const nextTurn = findNextActivePlayer(room, room.currentTurn)
-  if (nextTurn === -1 && activePlayers.length > 1) {
+  if (nextTurn === -1) {
     return runOutBoard(room)
   }
   room.currentTurn = nextTurn
   return null
+}
+
+// A player leaves or disconnects mid-hand: fold them out instead of deleting their seat,
+// so turn order, the dealer button and their chips in the pot stay correct.
+export const markPlayerLeft = (room, playerIndex) => {
+  const player = room.players[playerIndex]
+  player.left = true
+  player.folded = true
+  player.lastAction = 'Left'
+  if (playerIndex !== room.currentTurn) {
+    // Someone else's turn: only finish early if this leaves one player in the hand.
+    return getActivePlayers(room).length <= 1 ? processAfterAction(room) : null
+  }
+  return processAfterAction(room)
 }
