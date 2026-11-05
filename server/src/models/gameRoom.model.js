@@ -41,6 +41,16 @@ const PlayerSchema = new Schema({
     type: SchemaTypes.Boolean,
     default: false,
   },
+  // chips this player has put into the pot during the current hand (for side pots)
+  totalBet: {
+    type: SchemaTypes.Number,
+    default: 0,
+  },
+  // left or disconnected mid-hand: treated as folded, removed when the hand ends
+  left: {
+    type: SchemaTypes.Boolean,
+    default: false,
+  },
 }, { _id: false })
 
 const GameRoomSchema = new Schema({

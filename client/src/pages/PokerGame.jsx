@@ -331,7 +331,10 @@ export default function PokerGame() {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  min={20}
+                  min={gameState?.bigBlind ?? 20}
+                  step={gameState?.bigBlind ?? 20}
+                  aria-label="Raise by"
+                  title="Raise by this much on top of the current bet"
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 text-white font-mono"
                   value={raiseAmount}
                   onChange={(e) => setRaiseAmount(Number(e.target.value))}
@@ -340,6 +343,12 @@ export default function PokerGame() {
                   RAISE
                 </button>
               </div>
+              <button
+                onClick={() => action("raise", (gameState?.players?.[myIndex]?.chips ?? 0) + 1)}
+                className="h-11 bg-amber-500 text-slate-950 font-black rounded-xl hover:bg-amber-400"
+              >
+                ALL-IN ${gameState?.players?.[myIndex]?.chips ?? 0}
+              </button>
             </>
           )}
         </div>
