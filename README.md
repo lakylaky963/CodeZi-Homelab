@@ -92,3 +92,10 @@ npm start
 
 - [Babel](https://babeljs.io/) (Transpiler)
 - [Eslint](https://eslint.org/) (Linter)
+
+## Deploying (homelab)
+
+Runs as two Docker containers on `webapp-server` (CT 100): `web` (Nginx serving the built client on port 80, proxying `/api` and `/socket.io` to the backend) and `backend` (Node 22).
+Every push to `main` triggers `.github/workflows/deploy.yml` on the self-hosted runner, which syncs the code to `/var/www/html` and runs `docker compose up -d --build`.
+Secrets live only in `/var/www/html/server/.env` on the server (see `server/.env.example`); the deploy never overwrites it.
+The database is the shared MongoDB on `central-db-server` (10.0.0.230).

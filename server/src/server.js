@@ -28,14 +28,12 @@ const allowedOrigins = Array.from(
     'http://localhost:5174',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
-    'https://codezi.vercel.app',
   ])
 )
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true
   if (allowedOrigins.includes(origin)) return true
-  if (/^https:\/\/[\w-]+\.vercel\.app$/.test(origin)) return true
   return /^http:\/\/localhost:517\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:517\d+$/.test(origin)
 }
 
@@ -47,7 +45,7 @@ app.use(cookieParser())
 // Simple request logging to help debug connection resets
 app.use(requestLogger)
 
-// Health check endpoint for Vercel & monitoring
+// Health check endpoint (used by the Docker healthcheck)
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 

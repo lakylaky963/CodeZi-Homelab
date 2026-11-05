@@ -14,40 +14,24 @@ jobs:
     runs-on: self-hosted
     env:
       APP_DIR: /var/www/html
-      PM2_NAME: codezi-backend
     steps:
-      - name: Checkout Repository Code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Copy Files to Web Directory
+      - name: Sync code (keeps server/.env)
         run: |
-          if [ ! -w "$APP_DIR" ]; then
-            echo "$APP_DIR is not writable by $(whoami). It must be owned by the runner user."
-            exit 1
-          fi
-          # server/.env lives only on the server: never delete it.
-          rsync -a --delete \
-            --exclude='.git/' --exclude='node_modules/' \
-            --exclude='client/node_modules/' --exclude='client/dist/' \
-            --exclude='server/.env' \
-            ./ "$APP_DIR/"
+          [ -w "$APP_DIR" ] || { echo "$APP_DIR must be owned by $(whoami)"; exit 1; }
+          rsync -a --delete --exclude='.git/' --exclude='node_modules/' --exclude='client/dist/' \
+            --exclude='server/.env' ./ "$APP_DIR/"
+          [ -f "$APP_DIR/server/.env" ] || { echo "Missing $APP_DIR/server/.env (copy server/.env.example and fill it in)"; exit 1; }
 
-      - name: Deploy Backend Updates
-        working-directory: /var/www/html/server
+      - name: Build and start containers
+        working-directory: /var/www/html
         run: |
-          npm ci --no-audit --no-fund
-          if pm2 describe "$PM2_NAME" > /dev/null 2>&1; then
-            pm2 restart "$PM2_NAME" --update-env
-          else
-            pm2 start src/server.js --name "$PM2_NAME"
-          fi
-          pm2 save
-          sleep 5
-          pm2 describe "$PM2_NAME" | grep -q 'status.*online' || { pm2 logs "$PM2_NAME" --lines 30 --nostream; exit 1; }
+          docker compose up -d --build --remove-orphans
+          docker image prune -f > /dev/null
 
-      - name: Deploy Frontend Updates
-        working-directory: /var/www/html/client
+      - name: Health check
         run: |
-          rm -rf dist
-          npm ci --no-audit --no-fund
-          npm run build
+          for i in $(seq 1 20); do curl -fsS http://localhost/health > /dev/null && { echo healthy; exit 0; }; sleep 3; done
+          docker compose -f /var/www/html/docker-compose.yml logs --tail 40
+          exit 1

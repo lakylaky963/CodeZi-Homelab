@@ -31,13 +31,7 @@ echo "Frontend: http://localhost:5173"
 echo "Backend: http://localhost:8080"
 echo ""
 
-echo "Step 4: For Vercel + GCP Deployment"
 echo "-----------------------------------"
-echo "1. Deploy backend to GCP Cloud Run (see DEPLOYMENT.md)"
-echo "2. Get Cloud Run URL: https://your-service-xxxxx.run.app"
-echo "3. In Vercel project settings, add environment variable:"
-echo "   VITE_SERVER_URL=https://your-service-xxxxx.run.app"
-echo "4. Redeploy frontend: vercel --prod"
 echo ""
 
 echo "✅ Setup Complete! Read DEPLOYMENT.md for detailed instructions."
