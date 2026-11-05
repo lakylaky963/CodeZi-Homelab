@@ -5,32 +5,49 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-homelab
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: self-hosted
+    env:
+      APP_DIR: /var/www/html
+      PM2_NAME: codezi-backend
     steps:
       - name: Checkout Repository Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Copy Files to Web Directory
         run: |
-          if [ ! -w /var/www/html ]; then
-            echo "/var/www/html is not writable by the runner user.\nPlease ensure the self-hosted runner user owns /var/www/html or configure passwordless sudo on the host."
+          if [ ! -w "$APP_DIR" ]; then
+            echo "$APP_DIR is not writable by $(whoami). It must be owned by the runner user."
             exit 1
           fi
-          rsync -avz --delete --exclude='.git/' --exclude='node_modules/' --exclude='client/node_modules/' --exclude='client/dist/' ./ /var/www/html/
+          # server/.env lives only on the server: never delete it.
+          rsync -a --delete \
+            --exclude='.git/' --exclude='node_modules/' \
+            --exclude='client/node_modules/' --exclude='client/dist/' \
+            --exclude='server/.env' \
+            ./ "$APP_DIR/"
 
       - name: Deploy Backend Updates
+        working-directory: /var/www/html/server
         run: |
-          cd /var/www/html/server
-          npm install
-          pm2 restart backend-api || pm2 start src/server.js --name "backend-api"
-
-      - name: Clean previous dist folder
-        run: sudo rm -rf /var/www/html/client/dist
+          npm ci --no-audit --no-fund
+          if pm2 describe "$PM2_NAME" > /dev/null 2>&1; then
+            pm2 restart "$PM2_NAME" --update-env
+          else
+            pm2 start src/server.js --name "$PM2_NAME"
+          fi
+          pm2 save
+          sleep 5
+          pm2 describe "$PM2_NAME" | grep -q 'status.*online' || { pm2 logs "$PM2_NAME" --lines 30 --nostream; exit 1; }
 
       - name: Deploy Frontend Updates
+        working-directory: /var/www/html/client
         run: |
-          cd /var/www/html/client
-          npm install
+          rm -rf dist
+          npm ci --no-audit --no-fund
           npm run build
