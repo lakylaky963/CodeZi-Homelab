@@ -4,7 +4,7 @@ import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import mongoConnect from './config/db.js'
+import mongoConnect, { keepTryingMongo } from './config/db.js'
 import rootRouter from './routes/index.js'
 import requestLogger from './middleware/requestLogger.js'
 
@@ -123,6 +123,7 @@ const startServer = async () => {
     console.log(`🟢 MongoDB connected: ${dbConnected}`)
     console.log(`🚀 ========================================== 🚀`)
     if (dbConnected) startSessionSweeper(io)
+    else keepTryingMongo(() => startSessionSweeper(io))
   })
 
   // Catch if port 8080 is already locked by a zombie process and kill gracefully

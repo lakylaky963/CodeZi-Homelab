@@ -60,4 +60,20 @@ const connectMongo = async () => {
   }
 }
 
+// If the first attempt fails (DB down, wrong login), keep retrying in the background
+// so the site recovers by itself instead of showing an empty users table until a restart.
+export const keepTryingMongo = (onConnected, everyMs = 15000) => {
+  const timer = setInterval(async () => {
+    if (mongoose.connection.readyState === 1) { clearInterval(timer); return }
+    const uri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL || localMongoURI
+    try {
+      await connectWithURI(uri, 'retry')
+      clearInterval(timer)
+      onConnected?.()
+    } catch (e) {
+      console.error('⚠️ MongoDB retry failed:', e.message || e)
+    }
+  }, everyMs)
+}
+
 export default connectMongo
