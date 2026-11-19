@@ -1,4 +1,5 @@
 ﻿import User from '../models/user.model.js'
+import { validateUserInput } from '../utils/userValidation.js'
 
 const isValidObjectId = (id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id)
 
@@ -41,14 +42,13 @@ export const getUser = async (req, res) => {
 }
 
 export const createUser = async (req, res) => {
-  const firstName = req.body.firstName?.trim()
-  const lastName = req.body.lastName?.trim()
-
-  console.log('📡 [Controller] createUser payload:', { firstName, lastName })
-  if (!firstName) {
-    console.warn('⚠️ [Controller] createUser: missing firstName')
-    return res.status(400).json({ error: 'firstName is required' })
+  const { value, error: validationError } = validateUserInput(req.body)
+  if (validationError) {
+    console.warn('⚠️ [Controller] createUser: invalid input:', validationError)
+    return res.status(400).json({ error: validationError })
   }
+  const { firstName, lastName } = value
+  console.log('📡 [Controller] createUser payload:', { firstName, lastName })
 
   try {
     const user = await User.create({ firstName, lastName })
@@ -62,19 +62,18 @@ export const createUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { id } = req.params
-  const firstName = req.body.firstName?.trim()
-  const lastName = req.body.lastName?.trim()
-
-  console.log(`📡 [Controller] updateUser requested for ID: "${id}" with payload:`, { firstName, lastName })
 
   if (!isValidObjectId(id)) {
     console.warn(`⚠️ [Controller] updateUser: invalid user ID format: "${id}"`)
     return res.status(400).json({ error: 'Invalid User ID format' })
   }
 
-  const updateFields = {}
-  if (firstName) updateFields.firstName = firstName
-  if (lastName !== undefined) updateFields.lastName = lastName
+  const { value: updateFields, error: validationError } = validateUserInput(req.body, { partial: true })
+  if (validationError) {
+    console.warn(`⚠️ [Controller] updateUser: invalid input for ID "${id}":`, validationError)
+    return res.status(400).json({ error: validationError })
+  }
+  console.log(`📡 [Controller] updateUser requested for ID: "${id}" with payload:`, updateFields)
 
   if (Object.keys(updateFields).length === 0) {
     console.warn(`⚠️ [Controller] updateUser: no update fields provided for ID "${id}"`)

@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import mongoConnect, { keepTryingMongo } from './config/db.js'
 import rootRouter from './routes/index.js'
 import requestLogger from './middleware/requestLogger.js'
+import securityHeaders from './middleware/securityHeaders.js'
 
 // Clean extensionless import to the correct subfolder
 import pokerHandler from './sockets/pokerHandler.js';
@@ -37,6 +38,10 @@ const isAllowedOrigin = (origin) => {
   return /^http:\/\/localhost:517\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:517\d+$/.test(origin)
 }
 
+app.disable('x-powered-by')
+// Behind nginx / the homelab proxy: trust private + Tailscale hops so req.ip is the real client (used by the rate limiter)
+app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal', '100.64.0.0/10'])
+app.use(securityHeaders)
 app.use(cors({ origin: (origin, callback) => callback(null, isAllowedOrigin(origin)), credentials: true }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))

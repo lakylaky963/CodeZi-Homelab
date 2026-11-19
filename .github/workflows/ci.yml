@@ -16,6 +16,11 @@ jobs:
         run: |
           npm ci --omit=dev --no-audit --no-fund
           for f in $(find src -name '*.js'); do node --check "$f"; done
+      - name: Server tests
+        working-directory: server
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
       - name: Client builds
         working-directory: client
         run: |
